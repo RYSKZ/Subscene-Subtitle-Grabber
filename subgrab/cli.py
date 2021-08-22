@@ -75,7 +75,8 @@ def main():
         default=1,
         help="Number of subtitles to be downloaded.",
     )
-    parser.add_argument("-l", "--lang", default="EN", help="Change language.")
+    parser.add_argument("-l", "--lang", default="SP", help="Change language.")
+    parser.add_argument("-a", "--auto", default=True, help="Automaticaly guess title based on the filename of the movie");
     args = parser.parse_args()
     logger.debug("Input with flags: {}".format(sys.argv))
     logger.info("Initialized SubGrab script")
@@ -102,7 +103,7 @@ def main():
             directory.create_folder()
             # directory (which are not in a folder).
             directory.get_media_files()
-            directory.dir_dl()
+            directory.dir_dl(auto=args.auto)
         except Exception as e:
             logger.debug("Invalid Directory Input - {}".format(e))
             print("Invalid Directory Input - {}".format(e))
@@ -111,13 +112,18 @@ def main():
         # Searches for movies in current directory.
         directory.create_folder()
         directory.get_media_files()
-        directory.dir_dl(sub_count=args.count)
+        directory.dir_dl(sub_count=args.count, auto=args.auto)
 
     elif args.media_name:
         # Searches for the specified movie.
         args.media_name = " ".join(args.media_name)
         logger.info("Searching For: {}".format(args.media_name))
-        sub_link = subscene.sel_title(name=args.media_name.replace(" ", "."))
+        
+        if args.auto:
+            sub_link = subscene.get_title(name=args.media_name.replace(" ", "."))
+        else:
+            sub_link = subscene.sel_title(name=args.media_name.replace(" ", "."))
+
         logger.info(
             "Subtitle Link for {} : {}".format(args.media_name, sub_link)
         )

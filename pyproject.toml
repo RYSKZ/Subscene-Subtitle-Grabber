@@ -4,15 +4,14 @@ url = "https://github.com/RafayGhafoor/Subscene-Subtitle-Grabber"
 
 [tool.poetry]
 name = "subgrab"
-version = "1.0.4"
+version = "1.0.5"
 description = "Automated subtitles fetching"
 readme = "README.md"
 keywords = ["automation", "subtitles", "python", "pyproject.toml", "subscene", "subgrab"]
 homepage = "https://github.com/RafayGhafoor/Subscene-Subtitle-Grabber"
-repository = "https://github.com/RafayGhafoor/Subscene-Subtitle-Grabber"
+repository = "https://github.com/RYSKZ/Subscene-Subtitle-Grabber"
 documentation = "https://github.com/RafayGhafoor/Subscene-Subtitle-Grabber"
-long_description_content_type='text/markdown'
-authors = ["Rafay Ghafoor <rafayghafoor@protonmail.com>"]
+authors = ["Rafay Ghafoor <rafayghafoor@protonmail.com>", "RYSKZ <amitkmbt@gmail.com>"]
 license = "MIT"
 
 
@@ -32,22 +31,6 @@ black = "^19.10b0"
 flake8 = "^3.7.9"
 pre-commit = "^2.2.0"
 
-[tool.black]
-line-length = 88
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"

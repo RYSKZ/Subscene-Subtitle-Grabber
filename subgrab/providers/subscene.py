@@ -5,7 +5,7 @@ import zipfile
 
 import bs4
 import requests
-
+import urllib
 
 logger = logging.getLogger("subscene.py")
 SUB_QUERY = "https://subscene.com/subtitles/searchbytitle"
@@ -23,7 +23,7 @@ LANGUAGE = {
     "VI": "Vietnamese",
 }
 MODE = "prompt"
-DEFAULT_LANG = LANGUAGE["EN"]  # Default language in which subtitles
+DEFAULT_LANG = LANGUAGE["SP"]  # Default language in which subtitles
 # are downloaded.
 
 
@@ -105,30 +105,69 @@ def silent_mode(title_name, category, name=""):
     return obt_link
 
 
-def cli_mode(titles_name, category):
+def cli_mode(titles_name, category, **kwargs):
     """
     A manual mode driven by user, allows user to select subtitles manually
     from the command-line.
     :param titles_name: title names obtained from get_title function.
     """
+
+    def sort_title_by_score(title):
+        return title["score"]
+
+    name = kwargs["name"] if "name" in kwargs else None
+    auto = kwargs["auto"] if "auto" in kwargs else False
+
     media_titles = []  # Contains key names of titles_and_links dictionary.
     titles_and_links = (
         {}
     )  # --> "Doctor Strange" --> "https://subscene.com/.../1345632"
+    titles_and_scores = []
+
+
     for i, x in enumerate(category.find_all_next("div", {"class": "title"})):
         title_text = x.text.encode("ascii", "ignore").decode("utf-8").strip()
-        titles_and_links[title_text] = x.a.get("href")
-        print("({}): {}".format(i, title_text))
         media_titles.append(title_text)
+        titles_and_links[title_text] = x.a.get("href")
+    
+    if name is not None:
+        for index, title in enumerate(media_titles):
+            title_and_score = {
+                "title": title,
+                "score": 0
+            }
+            titles_and_scores.append(title_and_score)
 
+        for index, title in enumerate(media_titles):
+            for word in name.split(" "):
+                if word.lower() in title.lower().split(" "):
+                    titles_and_scores[index]["score"] += 1
+    
+    titles_and_scores = sorted(titles_and_scores, key=sort_title_by_score)[::-1]
+
+    if auto:
+        print(f'Downloading subtitles for "{titles_and_scores[0]["title"]}"')
+    else:
+        for index, title in enumerate(titles_and_scores):
+            print("({}): {}".format(index, title["title"]))
+    
     try:
-        qs = int(input("\nPlease Enter Movie Number: "))
-        return (
-            "https://subscene.com"
-            + titles_and_links[media_titles[qs]]
-            + "/"
-            + DEFAULT_LANG
-        )
+        if auto:
+            return (
+                "https://subscene.com"
+                + titles_and_links[titles_and_scores[0]["title"]]
+                + "/"
+                + DEFAULT_LANG
+            )
+        else:
+            qs = int(input("\nPlease Enter Movie Number: "))
+
+            return (
+                "https://subscene.com"
+                + titles_and_links[media_titles[qs]]
+                + "/"
+                + DEFAULT_LANG
+            )
 
     except Exception as e:
         logger.warning("Movie Skipped - {}".format(e))
@@ -242,6 +281,68 @@ def sel_sub(page, sub_count=1, name=""):
 
     # print("--- sel_sub took %s seconds ---" % (time.time() - start_time))
     return ["https://subscene.com" + i for i in sub_list]
+
+def get_title(name):
+    if not name:
+        print("Invalid Input.")
+        return
+    
+    f = urllib.request.urlopen("https://v2.sg.media-imdb.com/suggestion/" + urllib.parse.quote(name[0].lower()) + "/" + urllib.parse.quote(name.replace(".", " ") + ".json"))
+    s = f.read().decode()
+    f.close()
+    
+    print("https://v2.sg.media-imdb.com/suggestion/" + urllib.parse.quote(name[0].lower()) + "/" + urllib.parse.quote(name.replace(".", " ") + ".json"))
+    
+    name = re.search('"l":"(.*?)"', s, re.DOTALL).group(1)
+
+    soup = scrape_page(url=SUB_QUERY, parameter=name)
+    logger.info("Searching in query: {}".format(SUB_QUERY + "/?query=" + name))
+
+    try:
+        if not soup.find("div", {"class": "byTitle"}):
+            # URL EXAMPLE (RETURNED):
+            # https://subscene.com/subtitles/searchbytitle?query=pele.birth.of.the.legend
+            logger.info(
+                "Searching in release query: {}".format(
+                    SUB_QUERY + "?query=" + name.replace(" ", ".")
+                )
+            )
+            return SUB_QUERY + "?query=" + name.replace(" ", ".")
+
+        elif soup.find("div", {"class": "byTitle"}):
+            # for example, if 'abcedesgg' is search-string
+            if (
+                soup.find("div", {"class": "search-result"}).h2.string
+                == "No results found"
+            ):
+                print(
+                    "Sorry, the subtitles for this media file aren't available."
+                )
+                return
+
+    except Exception as e:
+        logger.debug("Returning - {}".format(e))
+        return
+
+    title_lst = soup.findAll(
+        "div", {"class": "search-result"}
+    )  # Creates a list of titles
+
+    for titles in title_lst:
+        popular = titles.find(
+            "h2", {"class": "popular"}
+        )  # Searches for the popular tag
+
+        if MODE == "prompt":
+            logger.info("Running in PROMPT mode.")
+
+            return cli_mode(titles, category=popular, name=name, auto=True)
+        else:
+            logger.info("Running in SILENT mode.")
+
+            return silent_mode(
+                titles, category=popular, name=name.replace(".", " ")
+            )
 
 
 def dl_sub(page):
