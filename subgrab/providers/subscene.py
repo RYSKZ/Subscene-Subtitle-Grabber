@@ -293,7 +293,10 @@ def get_title(name):
     
     print("https://v2.sg.media-imdb.com/suggestion/" + urllib.parse.quote(name[0].lower()) + "/" + urllib.parse.quote(name.replace(".", " ") + ".json"))
     
-    name = re.search('"l":"(.*?)"', s, re.DOTALL).group(1)
+    title = re.search('"l":"(.*?)"', s, re.DOTALL).group(1)
+    
+    if title is not None:
+      name = title
 
     soup = scrape_page(url=SUB_QUERY, parameter=name)
     logger.info("Searching in query: {}".format(SUB_QUERY + "/?query=" + name))
